@@ -1,7 +1,7 @@
 # MVP-LAM: Learning Action-Centric Latent Action via Cross-Viewpoint Reconstruction
 
 [![arXiv](https://img.shields.io/badge/arXiv-2602.03668-b31b1b.svg)](https://arxiv.org/abs/2602.03668)
-[![Project Page](https://img.shields.io/badge/Project-Page-blue.svg)](https://jmsnu.github.io/)
+[![Project Page](https://img.shields.io/badge/Project-Page-blue.svg)](https://jm-this.github.io/mvp_lam/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 
 **Jung Min Lee**<sup>1</sup>, **Dohyeok Lee**<sup>1</sup>, **Seokhun Ju**<sup>1</sup>, **Taehyun Cho**<sup>1</sup>, **Jin Woo Koo**<sup>1</sup>, **Li Zhao**<sup>2</sup>, **Sangwoo Hong**<sup>3</sup>, **Jungwoo Lee**<sup>1,4</sup>
