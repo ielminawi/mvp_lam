@@ -24,6 +24,7 @@
 
 ## 📢 News
 
+- **[2026/05]** We released all MVP-LAM checkpoints on Hugging Face 🤗
 - **[2026/04]** MVP-LAM is accepted to ICML 2026!
 - **[2026/04]** Code release of MVP-LAM. Please check it out!
 
@@ -33,7 +34,7 @@
 | --- | --- | --- | --- |
 | mvp-lam | — | [mvp-lam](https://huggingface.co/JM-Lee/mvp-lam) | Multi-viewpoint LAM trained on OXE + EgoExo4D. |
 | mvp-lam-7b | [prism-dinosiglip-224px+7b](https://huggingface.co/TRI-ML/prismatic-vlms/tree/main/prism-dinosiglip-224px%2B7b) | [mvp-lam-7b-bridge-pt](https://huggingface.co/JM-Lee/mvp-lam-7b-bridge-pt) | VLA pretrained on Bridge V2 with MVP-LAM latent actions. |
-| mvp-lam-libero | [mvp-lam-7b](https://huggingface.co/JM-Lee/mvp-lam-7b-bridge-pt) | [mvp-lam-7b-224-libero](https://huggingface.co/JM-Lee/mvp-lam-7b-224-libero) | Finetuned on the LIBERO-Long and LIBERO-Goal. |
+| mvp-lam-libero | [mvp-lam-7b](https://huggingface.co/JM-Lee/mvp-lam-7b-bridge-pt) | [mvp-lam-7b-224-libero](https://huggingface.co/JM-Lee/mvp-lam-7b-224-libero) | Finetuned on the LIBERO. |
 | mvp-lam-simpler | [mvp-lam-7b](https://huggingface.co/JM-Lee/mvp-lam-7b-bridge-pt) | [mvp-lam-7b-224-simpler](https://huggingface.co/JM-Lee/mvp-lam-7b-224-simpler) | Finetuned on small SIMPLER demos for SimplerEnv. |
 
 
@@ -246,12 +247,14 @@ python real2sim_eval_maniskill3.py \
 | **AVG** | **60.4** | 39.6 | <u>57.3</u> | 36.4 | 19.8 | 17.7 | 36.5 |
 
 ### LIBERO
-
-|Suite| MVP-LAM | UniVLA (Bridge) | OpenVLA | $\pi_0$ | UniVLA (OXE) |
-|:---:| :---: | :---: | :---: | :---: | :---: |
-|Long| **90.8** | 79.4 | 53.7 | 85.2 | 92.0 |
-|Goal| **94.8** | 91.9 | 58.8 | 95.8 | 96.8 |
----
+| Method | Spatial | Object | Goal | Long | AVG |
+|:---|:---:|:---:|:---:|:---:|:---:|
+| Octo | 78.9 | 85.7 | 84.6 | 51.1 | 75.1 |
+| OpenVLA | 84.7 | 88.4 | 79.2 | 53.7 | 76.5 |
+| LAPA | 73.8 | 74.6 | 58.8 | 55.4 | 65.7 |
+| $\pi_0\ast$ | **96.8** | **98.8** | **95.8** | 85.2 | **94.2** |
+| UniVLA | 95.2 | <u>95.4</u> | 91.9 | <u>87.5</u> | 92.5 |
+| **MVP-LAM** | <u>96.0</u> | 94.6 | <u>94.8</u> | **90.8** | <u>94.1</u> |
 
 ## 📝 Citation
 
