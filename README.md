@@ -8,7 +8,7 @@
 
 <sup>1</sup>Seoul National University  <sup>2</sup>Microsoft Research Asia  <sup>3</sup>Konkuk University  <sup>4</sup>HodooAI Labs
 
-![Concept figure](assets/concept_v2.png)
+![Concept figure](assets/concept_v3.png)
 
 <!-- **Cross-viewpoint reconstruction trains a latent action inferred from one view to explain the future in another view.** -->
 
