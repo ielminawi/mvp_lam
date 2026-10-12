@@ -71,3 +71,34 @@ python -m unittest discover -s tests -p 'test_temporal_pilot.py'
 Create a separate full cache without `--limit-episodes`; use `config.json` and separate two_frame/four_frame output directories. Inspect the cache manifest for dropped intermediate-frame windows. Keep the same cache/config for both models. `latest.pt` saves adapted encoding parameters and metadata at each validation boundary, not a whole replacement LAM checkpoint. Load the verified released base and overlay these parameters to evaluate. Optimizer resume is not implemented: interrupted runs must restart into a new directory. No best-validation or test-based selection; use the predeclared final update.
 
 First compare frozen-reference reconstruction against the two-frame run's initial score and matched final reconstruction/code usage. A four-frame score at update0 is an untrained longer-input diagnostic, not another released baseline. Lower reconstruction error alone does not establish better actions. A later stage will extract features from each adapted model and fit matched new PCA/probes; that evaluator is not part of this first training smoke test. Reserve fresh test episodes before final extension claims; V3 test has already been inspected.
+
+## Matched action probing after both full pilots
+
+`scripts.probe_temporal_pilot` compares released endpoints, adapted endpoints, and adapted four-frame windows. It verifies identical cache provenance/training configurations, final-update checkpoints, exact adapted-parameter keys and frozen base weights. Common raw action labels and frame/episode identities come from the cached window metadata; the V3 horizon-aware normalization is reused. Extraction never loads test files.
+
+Run extraction in a GPU allocation after pulling this revision on the login node:
+
+```bash
+python -m scripts.probe_temporal_pilot extract \
+  --cache-dir /cluster/scratch/ielminawi/mvp_lam/data/temporal_pilot_cache \
+  --sample-dir /cluster/scratch/ielminawi/mvp_lam/data/probe_sample_v3 \
+  --checkpoint checkpoints/mvp_lam.bin \
+  --dino-dir /cluster/home/ielminawi/projects/dinov2 \
+  --two-frame-dir notes/temporal_pilot_two_v1 \
+  --four-frame-dir notes/temporal_pilot_four_v1 \
+  --output-dir notes/temporal_probe_features_v1 \
+  --batch-size 4
+```
+
+Then fit probes (CPU; may run in the same allocation):
+
+```bash
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+python -m scripts.probe_temporal_pilot fit \
+  --features-dir notes/temporal_probe_features_v1 \
+  --output-dir notes/temporal_probe_results_v1
+```
+
+Each representation gets separately fitted training-only centered PCA128 (no whitening), then four Linear128→7 probes with seeds42–45, Adam .001, batch512, 30epochs, cosine per epoch to0, no clipping/weight decay. Batch orders and initial probe weights match across representations. PCA coordinates can differ; least squares provides a supplementary training-only reference less sensitive to finite Adam fitting. Models, preprocessing, raw predictions and overall/component train/validation NMSE are saved. All use the final epoch; there is no checkpoint selection. Group error reduction uses the training-mean action baseline. Zero-variance group NMSE is undefined. Gripper threshold accuracy is supplementary.
+
+Probe-seed variation does not estimate variation across LAM training seeds: each adapted LAM currently has one seed. These are development validation results, not final test claims. Historical V3 scores should be compared cautiously if cache filtering changed the windows; the newly extracted released reference is the matched baseline.
