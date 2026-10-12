@@ -4,7 +4,6 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 from einops import rearrange, repeat
-from rotary_embedding_torch import RotaryEmbedding
 from torch import Tensor
 
 
@@ -31,10 +30,10 @@ class PositionalEncoding(nn.Module):
         div_term = torch.exp(exponent)
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
-        self.pos_enc = pe
+        self.register_buffer("pos_enc", pe, persistent=False)
 
     def forward(self, x: Tensor) -> Tensor:
-        return x + self.pos_enc[:x.shape[2]].cuda()
+        return x + self.pos_enc[:x.shape[2]].to(device=x.device, dtype=x.dtype)
 
 
 class SelfAttention(nn.Module):
@@ -54,6 +53,8 @@ class SelfAttention(nn.Module):
 
         self.rot_emb = rot_emb
         if rot_emb:
+            from rotary_embedding_torch import RotaryEmbedding
+
             self.rotary_embedding = RotaryEmbedding(dim=inner_dim // 2)
 
     def scaled_dot_product_attention(
