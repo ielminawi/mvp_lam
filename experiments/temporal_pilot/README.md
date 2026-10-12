@@ -120,3 +120,29 @@ Outputs: `results.json`, `training_curves.png/.pdf`, `code_usage.png/.pdf`. Requ
 ```bash
 python -m unittest discover -s tests -p 'test_temporal_audit.py'
 ```
+
+## Longer matched run: 2,500 updates
+
+`long.json` differs from `config.json` only in `updates` (500 → 2500). Both variants restart from the released checkpoint with seed42; this is a 2,500-update run in total, not 2,500 additional updates. Restarting recreates Adam state and the seeded example stream from update1; loading the old encoder weights alone would not be an exact continuation. Existing 500-update outputs stay intact. With effective batch8, each variant sees 20,000 example presentations (2.251 passes for 8,886 windows). Validation remains every100 updates; final checkpoint selection remains predeclared. This experiment extends optimization, with one adaptation seed, and does not establish general superiority.
+
+Reuse the full cache; no recaching is needed. Run each command in a GPU allocation with sufficient time. Runtime is roughly five times its earlier 500-update run, plus initialization; run variants in separate allocations if necessary. There is no optimizer resume, so a time-limited interruption cannot be continued exactly from `latest.pt`.
+
+```bash
+python -m scripts.temporal_pilot train \
+  --variant two_frame \
+  --config experiments/temporal_pilot/long.json \
+  --cache-dir /cluster/scratch/ielminawi/mvp_lam/data/temporal_pilot_cache \
+  --checkpoint checkpoints/mvp_lam.bin \
+  --dino-dir /cluster/home/ielminawi/projects/dinov2 \
+  --output-dir notes/temporal_pilot_two_2500_v1
+
+python -m scripts.temporal_pilot train \
+  --variant four_frame \
+  --config experiments/temporal_pilot/long.json \
+  --cache-dir /cluster/scratch/ielminawi/mvp_lam/data/temporal_pilot_cache \
+  --checkpoint checkpoints/mvp_lam.bin \
+  --dino-dir /cluster/home/ielminawi/projects/dinov2 \
+  --output-dir notes/temporal_pilot_four_2500_v1
+```
+
+After both complete, audit these new run directories into `notes/temporal_pilot_audit_2500_v1`. Omit `--features-dir` until features have been extracted from the new checkpoints: the previous feature directory belongs to the 500-update models. Then repeat matched extraction/probing with the new model directories and separate feature/result outputs. Do not use V3 test results to select duration or checkpoints.
