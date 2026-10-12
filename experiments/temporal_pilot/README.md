@@ -102,3 +102,21 @@ python -m scripts.probe_temporal_pilot fit \
 Each representation gets separately fitted training-only centered PCA128 (no whitening), then four Linear128→7 probes with seeds42–45, Adam .001, batch512, 30epochs, cosine per epoch to0, no clipping/weight decay. Batch orders and initial probe weights match across representations. PCA coordinates can differ; least squares provides a supplementary training-only reference less sensitive to finite Adam fitting. Models, preprocessing, raw predictions and overall/component train/validation NMSE are saved. All use the final epoch; there is no checkpoint selection. Group error reduction uses the training-mean action baseline. Zero-variance group NMSE is undefined. Gripper threshold accuracy is supplementary.
 
 Probe-seed variation does not estimate variation across LAM training seeds: each adapted LAM currently has one seed. These are development validation results, not final test claims. Historical V3 scores should be compared cautiously if cache filtering changed the windows; the newly extracted released reference is the matched baseline.
+
+## Audit completed pilot curves and code usage
+
+This reads saved training reports and optionally extracted code indices. It does not load models, train, select a new checkpoint or access test data. Run on CPU (an existing GPU allocation also works):
+
+```bash
+python -m scripts.audit_temporal_pilot \
+  --two-frame-dir notes/temporal_pilot_two_v1 \
+  --four-frame-dir notes/temporal_pilot_four_v1 \
+  --features-dir notes/temporal_probe_features_v1 \
+  --output-dir notes/temporal_pilot_audit_v1
+```
+
+Outputs: `results.json`, `training_curves.png/.pdf`, `code_usage.png/.pdf`. Requires NumPy and Matplotlib. The audit checks matched configurations/cache/frozen weights, complete finite histories and validation code counts. Extracted validation indices must match final logged code counts. Plots distinguish full-split validation from trailing means of changing training batches. The JSON also reports clipping frequency, example presentations, per-slot code perplexity and observed four-code tuple diversity. Marginal perplexity ranges from 1 to 16; high marginal usage alone can hide fixed assignments per slot. Neither diversity nor a flattening curve proves action quality or convergence. Best logged validation update is descriptive; the predeclared final models remain selected. Uncertainty from one LAM adaptation seed remains unresolved.
+
+```bash
+python -m unittest discover -s tests -p 'test_temporal_audit.py'
+```
