@@ -1,8 +1,11 @@
+import json
+import sys
+from unittest.mock import patch
 import tempfile
 import unittest
 from pathlib import Path
 import numpy as np
-from scripts.audit_temporal_pilot import inspect, usage, feature_usage, plot
+from scripts.audit_temporal_pilot import inspect, usage, feature_usage, plot, main
 
 
 class AuditTests(unittest.TestCase):
@@ -28,6 +31,28 @@ class AuditTests(unittest.TestCase):
         r['history'][-1]['validation']['code_counts'] = [2]*16
         with self.assertRaises(ValueError):
             inspect(r)
+
+    def test_full_audit_includes_untrained_released_reference(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            for name in ('two_frame', 'four_frame'):
+                report = self.report()
+                report.update(variant=name, cache_manifest_sha256='cache', frozen_weight_sha256='frozen')
+                (root/name).mkdir()
+                (root/name/'results.json').write_text(json.dumps(report))
+            for name in ('released', 'two_frame', 'four_frame'):
+                dest = root/'features'/name
+                dest.mkdir(parents=True)
+                np.savez(dest/'train.npz', indices=np.tile(np.arange(16).reshape(4, 4), (4, 1)))
+                np.savez(dest/'validation.npz', indices=np.arange(16).reshape(4, 4))
+            argv = ['audit', '--two-frame-dir', str(root/'two_frame'),
+                    '--four-frame-dir', str(root/'four_frame'),
+                    '--features-dir', str(root/'features'), '--output-dir', str(root/'output')]
+            with patch.object(sys, 'argv', argv), patch('scripts.audit_temporal_pilot.plot'):
+                main()
+            result = json.loads((root/'output/results.json').read_text())
+            self.assertIn('validation', result['runs']['released']['extracted_code_usage'])
+            self.assertNotIn('final_code_usage', result['runs']['released'])
 
     def test_slot_collapse_hidden_by_marginals_and_render(self):
         with tempfile.TemporaryDirectory() as folder:

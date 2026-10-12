@@ -128,7 +128,7 @@ def main():
                 expected = a[f'{split}_pairs']
                 if stats['pairs'] != expected:
                     raise ValueError('Feature count mismatch')
-                if name in summaries and split == 'validation' and stats['marginal']['counts'] != summaries[name]['final_code_usage']['counts']:
+                if name in reports and split == 'validation' and stats['marginal']['counts'] != summaries[name]['final_code_usage']['counts']:
                     raise ValueError('Extracted indices disagree with final validation log')
                 summaries.setdefault(name, {}).setdefault('extracted_code_usage', {})[split] = stats
     args.output_dir.mkdir(parents=True, exist_ok=False)
