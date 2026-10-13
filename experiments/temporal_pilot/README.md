@@ -220,3 +220,36 @@ This is an exploratory observed-path information test. Four-frame sees B,C while
 ```bash
 python -m unittest discover -s tests -p 'test_temporal_path.py'
 ```
+
+## Final readout versus distributed slots; per-frame decoding
+
+Extract all contextualized slots from the same frozen final four-frame model. GPU command:
+
+```bash
+python -m scripts.diagnose_temporal_readout extract \
+  --cache-dir /cluster/scratch/ielminawi/mvp_lam/data/temporal_pilot_cache \
+  --checkpoint checkpoints/mvp_lam.bin \
+  --dino-dir /cluster/home/ielminawi/projects/dinov2 \
+  --four-frame-dir notes/temporal_pilot_four_2500_v1 \
+  --features-dir notes/temporal_probe_features_2500_v1 \
+  --output-dir notes/temporal_readout_features_v1 \
+  --batch-size 4
+```
+
+For each training/validation window save D's quantized512, D's continuous512 and all frames' continuous2048 features, plus shared endpoint7 labels and identities. Verify all cache file hashes, completed final checkpoint and frozen weights, matching existing D quantized features/code IDs and episode/frame labels. No test episode files are opened. Only validation runs the decoder diagnostic: the same A features plus A/B/C/D's quantized four-slot group each predict the same D features. Save per-window four-condition errors and paired episode-bootstrap differences from D. Early slots have restricted causal visibility and were not directly optimized for this use; poor reconstruction does not establish absence of information.
+
+Then fit full-feature endpoint probes on CPU (same allocation works):
+
+```bash
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+python -m scripts.diagnose_temporal_readout fit \
+  --readout-dir notes/temporal_readout_features_v1 \
+  --probe-dir notes/temporal_probe_results_2500_v1 \
+  --output-dir notes/temporal_readout_results_v1
+```
+
+Reuse endpoint target normalization; no PCA or feature whitening. Sum-SSE ridge with unpenalized intercept, alpha .01/.1/1/10/100/1000 selected on validation MSE. A single full Gram spectral decomposition per representation computes the ridge grid without truncating dimensions. Save weights/bias/normalization, predictions and grouped scores; bootstrap paired validation errors relative to D continuous by episode. CPU2048D fitting may take longer than earlier512D probes. No MLP or path labels in this diagnostic. Model comparisons are exploratory validation-tuned scores, not confirmatory tests. All continuous slots have4x feature dimensions; improvement would support distributed accessible information, not an equal-bottleneck model gain. Continuous versus quantized gains identify information accessible before quantization, not a guaranteed usable discrete latent. Neither result alone prescribes an architecture change.
+
+```bash
+python -m unittest discover -s tests -p 'test_temporal_readout.py'
+```
