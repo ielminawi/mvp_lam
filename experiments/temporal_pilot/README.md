@@ -169,3 +169,31 @@ Conditions: correct A,B,C,D; repeated endpoints A,A,D,D; reversed middle A,C,B,D
 ```bash
 python -m unittest discover -s tests -p 'test_temporal_interventions.py'
 ```
+
+## Prediction changes and probe-capacity diagnostic
+
+CPU commands; may also run inside an existing GPU allocation. No LAM fitting, decoder changes, raw data access or test access:
+
+```bash
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+python -m scripts.analyze_temporal_prediction_changes \
+  --diagnostic-dir notes/temporal_intermediate_diagnostic_v1 \
+  --probe-dir notes/temporal_probe_results_2500_v1 \
+  --output-dir notes/temporal_prediction_changes_v1
+
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+python -m scripts.check_probe_bottleneck \
+  --features-dir notes/temporal_probe_features_2500_v1 \
+  --probe-dir notes/temporal_probe_results_2500_v1 \
+  --output-dir notes/temporal_probe_capacity_v1
+```
+
+The first command measures saved action-prediction changes in normalized units, separately for translation/orientation/gripper, and counts episodes improving/worsening. Equal errors do not imply identical predictions. It cannot measure full decoder-output differences because these were not saved.
+
+The second compares all three frozen representations using ridge regression on PCA128/full512 and a one-hidden-layer MLP on PCA128/full512. Ridge alpha grid: .01,.1,1,10,100,1000 (sum-SSE penalty, unpenalized bias), selected by validation MSE. MLP: 64 hidden units, ReLU, Adam .001, weight decay .0001, batch512, maximum200epochs, patience20, best validation MSE; seeds42–45. Same existing training-only mean/PCA and target normalization; no whitening. A full512 MLP with fixed shuffled training labels is a negative control, evaluated against correct labels. Store models, preprocessing and normalized train/validation predictions plus results.
+
+This is exploratory: validation is reused for selection and reporting, so scores are selection-biased and cannot be treated as independent benchmark improvements. Nonlinear versus original affine comparisons also change optimization duration; ridge references help assess linear optimization. Compare PCA/full ridge to isolate truncation, PCA/full MLP to inspect truncation under the same nonlinear protocol, and ridge/MLP to assess accessible nonlinear information. Training feature rank was below128, so large PCA losses are not expected a priori. The affine original probe and least-squares reference remain available. Four probe seeds do not measure LAM-seed uncertainty. A nonlinear gain for all models is not evidence that intermediate frames help; compare four-frame against matched two-frame and released results. Reserve a fresh final test before any confirmatory claim.
+
+```bash
+python -m unittest discover -s tests -p 'test_probe_bottleneck.py'
+```
