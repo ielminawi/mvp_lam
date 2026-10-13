@@ -146,3 +146,26 @@ python -m scripts.temporal_pilot train \
 ```
 
 After both complete, audit these new run directories into `notes/temporal_pilot_audit_2500_v1`. Omit `--features-dir` until features have been extracted from the new checkpoints: the previous feature directory belongs to the 500-update models. Then repeat matched extraction/probing with the new model directories and separate feature/result outputs. Do not use V3 test results to select duration or checkpoints.
+
+## Fixed-endpoint intermediate-frame diagnostic
+
+Use the completed 2,500-update four-frame model and its existing probes. No training or PCA/probe refitting. In a GPU allocation:
+
+```bash
+python -m scripts.diagnose_temporal_intermediates \
+  --cache-dir /cluster/scratch/ielminawi/mvp_lam/data/temporal_pilot_cache \
+  --checkpoint checkpoints/mvp_lam.bin \
+  --dino-dir /cluster/home/ielminawi/projects/dinov2 \
+  --four-frame-dir notes/temporal_pilot_four_2500_v1 \
+  --probe-dir notes/temporal_probe_results_2500_v1 \
+  --output-dir notes/temporal_intermediate_diagnostic_v1 \
+  --batch-size 4
+```
+
+Conditions: correct A,B,C,D; repeated endpoints A,A,D,D; reversed middle A,C,B,D. Endpoints, reconstruction targets and action targets remain identical. Read only cached validation episodes. Measure final four continuous vectors before quantization (`emb`), per-slot and any code changes, reconstruction MSE, and action NMSE averaged over four frozen probes. Correct-input predictions must reproduce saved reference predictions within numerical tolerance; failures require investigation, not relaxed thresholds by default. Cache/checkpoint/probe provenance is checked.
+
+`results.json` reports metrics and paired error differences. `per_window.npz` retains representations, indices, predictions, errors and episode/frame identities. Positive intervention-minus-correct error means the intervention is worse. Global scores weight windows equally; paired confidence intervals use equal-episode mean differences and resample entire episodes (2,000 draws, seed20261013). NMSE intervals use a fixed full-validation denominator, so these intervals describe the episode-averaged normalized error difference, not refitted bootstrap NMSE. They do not measure LAM-seed uncertainty. Altered sequences may be out of distribution; sensitivity alone does not prove beneficial temporal reasoning. No attention-map interpretation is needed.
+
+```bash
+python -m unittest discover -s tests -p 'test_temporal_interventions.py'
+```
