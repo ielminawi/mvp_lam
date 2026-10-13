@@ -35,6 +35,7 @@ def main():
     builder = tfds.builder_from_directory(str(args.data_dir))
     args.output_dir.mkdir(parents=True)
     cameras = ("image", "top_image")
+    overview_rows = []
     report = {
         "scope": __doc__, "shard": str(shard),
         "input_sha256": {path.name: digest(path) for path in
@@ -73,6 +74,16 @@ def main():
                 "constant_frame_indices": np.flatnonzero(np.std(flat, axis=1) == 0).tolist(),
                 "adjacent_mean_absolute_pixel_change": float(np.abs(np.diff(frames.astype(np.float32), axis=0)).mean()) if len(frames) > 1 else None,
             }
+        if entry["steps"]:
+            row_image = Image.new("RGB", (768, 216), "white")
+            row_draw = ImageDraw.Draw(row_image)
+            for column, (camera, index) in enumerate(
+                [(camera, index) for index in (0, entry["steps"] - 1) for camera in cameras]
+            ):
+                x = column * 192
+                row_draw.text((x + 3, 5), f"ep {record_index} {camera} t={index}", fill="black")
+                row_image.paste(Image.fromarray(images[camera][index]).resize((192, 192)), (x, 24))
+            overview_rows.append(row_image)
         if record_index < 3 and entry["steps"]:
             indices = np.unique(np.linspace(0, entry["steps"] - 1, min(6, entry["steps"]), dtype=int))
             sheet = Image.new("RGB", (512, 280 * len(indices)), "white")
@@ -90,6 +101,15 @@ def main():
         for camera, info in entry["cameras"].items():
             print(f"  {camera}: {info}", flush=True)
     report["episode_count"] = len(report["episodes"])
+    report["overview_sheets"] = []
+    for start in range(0, len(overview_rows), 5):
+        rows = overview_rows[start:start + 5]
+        overview = Image.new("RGB", (768, 216 * len(rows)), "white")
+        for row, image in enumerate(rows):
+            overview.paste(image, (0, row * 216))
+        name = f"all_episodes_overview_{start // 5:02d}.png"
+        overview.save(args.output_dir / name)
+        report["overview_sheets"].append(name)
     (args.output_dir / "inspection.json").write_text(json.dumps(report, indent=2))
     print(f"\nInspected {report['episode_count']} episodes. Saved {args.output_dir}")
     print("Review contact sheets for camera stability and candidate temporal alignment. No LAM inference performed.")
