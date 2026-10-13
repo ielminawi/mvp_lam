@@ -253,3 +253,31 @@ Reuse endpoint target normalization; no PCA or feature whitening. Sum-SSE ridge 
 ```bash
 python -m unittest discover -s tests -p 'test_temporal_readout.py'
 ```
+
+## Matched continuous versus quantized final slots across models
+
+Reuse the saved four-frame readout. Extract only released and adapted two-frame final continuous slots on GPU, verifying their selected IDs and quantized vectors against the existing feature reference. All models retain four128D slots (512D flattened); all-frame2048D representations are deliberately excluded from this matched comparison.
+
+```bash
+python -m scripts.compare_temporal_continuous extract \
+  --cache-dir /cluster/scratch/ielminawi/mvp_lam/data/temporal_pilot_cache \
+  --features-dir notes/temporal_probe_features_2500_v1 \
+  --four-readout-dir notes/temporal_readout_features_v1 \
+  --two-frame-dir notes/temporal_pilot_two_2500_v1 \
+  --checkpoint checkpoints/mvp_lam.bin \
+  --dino-dir /cluster/home/ielminawi/projects/dinov2 \
+  --output-dir notes/temporal_continuous_features_v1 \
+  --batch-size 4
+
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+python -m scripts.compare_temporal_continuous fit \
+  --continuous-dir notes/temporal_continuous_features_v1 \
+  --probe-dir notes/temporal_probe_results_2500_v1 \
+  --output-dir notes/temporal_continuous_results_v1
+```
+
+Train/validation only; no decoder pass or LAM updates. Verify completed/cache-matched adaptation reports, checkpoint hashes, frozen bases, identical labels/record/frame IDs, disjoint sources, and hashes for extracted artifacts. Fit full512D ridge, no PCA/whitening, alpha .01/.1/1/10/100/1000 selected by validation MSE, shared endpoint7 normalization, unpenalized intercept. Save weights, predictions, grouped scores and paired four-minus-two error intervals by episode. Positive paired difference means four-frame worse. Equal-episode bootstrap uses a fixed full-validation variance denominator and differs from window-weighted summary scores. Validation selection/report reuse remains exploratory, not independent test evidence; no correction for selection or LAM-seed uncertainty. Equal feature dimension does not make continuous vectors equivalent in information capacity to four discrete code IDs.
+
+```bash
+python -m unittest discover -s tests -p 'test_temporal_continuous.py'
+```
