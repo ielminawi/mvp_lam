@@ -22,7 +22,7 @@ def ridge_fit(x, y, alpha):
 
 def train_mlp(x, y, xv, yv, seed, epochs=200, patience=20):
     torch.manual_seed(seed)
-    model = torch.nn.Sequential(torch.nn.Linear(x.shape[1], 64), torch.nn.ReLU(), torch.nn.Linear(64, 7))
+    model = torch.nn.Sequential(torch.nn.Linear(x.shape[1], 64), torch.nn.ReLU(), torch.nn.Linear(64, y.shape[1]))
     optimizer = torch.optim.Adam(model.parameters(), lr=.001, weight_decay=.0001)
     gen = torch.Generator().manual_seed(seed+100)
     x, y, xv = [torch.tensor(a, dtype=torch.float32) for a in (x, y, xv)]

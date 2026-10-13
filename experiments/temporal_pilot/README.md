@@ -197,3 +197,26 @@ This is exploratory: validation is reused for selection and reporting, so scores
 ```bash
 python -m unittest discover -s tests -p 'test_probe_bottleneck.py'
 ```
+
+## Three-segment path-sensitive probing
+
+CPU, inside a compute allocation; can run in an existing GPU allocation. Reuse all three frozen feature sets. No new LAM/decoder training or feature extraction:
+
+```bash
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+python -m scripts.probe_temporal_path \
+  --sample-dir /cluster/scratch/ielminawi/mvp_lam/data/probe_sample_v3 \
+  --features-dir notes/temporal_probe_features_2500_v1 \
+  --probe-dir notes/temporal_probe_results_2500_v1 \
+  --output-dir notes/temporal_path_probe_v1
+```
+
+Targets are three concatenated seven-number vectors (21 outputs): A→B, B→C, C→D at original offsets0/3/6/9. Each uses `states[end,:6]-states[start,:6]`, plus `gripper_binarized[end-1]`, matching the endpoint label convention. Original orientation-coordinate subtraction is retained without angle wrapping. Validate telescoping of six movement components to the saved A→D targets and exact final gripper equality. Only train/validation episode state/gripper arrays are loaded; no test files or RGB arrays. Feature identities must match across all models, source splits must be disjoint and sample/features/probe provenance must agree. Hash all opened episode files for the report.
+
+Fit empirical per-output mean/std on training windows only (constant dimensions scale1); this deliberately differs from prior endpoint horizon-aware normalization. Absolute endpoint/path NMSE is not a direct like-for-like comparison. Reuse each variant's existing training-only PCA128. Fit ridge (same six-alpha grid as capacity diagnostic) and MLP128→64ReLU→21 (Adam.001 WD.0001 batch512 max200epochs patience20, best validation epoch), seeds42–45. Include training-mean baseline and MLP with complete21D training target rows shuffled (seed20261013). Report overall, each segment, translation/orientation/gripper scores; save normalized predictions/models/preprocessing/raw targets/identities. Bootstrap paired four-minus-two nonlinear errors by episode, using equal-episode means and a fixed scored-split variance denominator. Intervals do not correct for validation tuning or LAM-seed uncertainty.
+
+This is an exploratory observed-path information test. Four-frame sees B,C while endpoints-only does not, so a gain would not establish forecasting ability. Targets describe three coarse H=3 movements, not all nine individual actions. Validation is reused for model selection/reporting; reserve fresh data for final confirmation. Undefined zero-variance group NMSE is explicitly reported as null.
+
+```bash
+python -m unittest discover -s tests -p 'test_temporal_path.py'
+```
