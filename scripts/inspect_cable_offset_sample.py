@@ -26,12 +26,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--shard-name", default="berkeley_cable_routing-train.tfrecord-00000-of-00064")
     args = parser.parse_args()
     if args.output_dir.exists():
         raise FileExistsError(f"Choose a new output directory: {args.output_dir}")
     tf.config.threading.set_inter_op_parallelism_threads(1)
     tf.config.threading.set_intra_op_parallelism_threads(1)
-    shard = args.data_dir / "berkeley_cable_routing-train.tfrecord-00000-of-00064"
+    if Path(args.shard_name).name != args.shard_name:
+        raise ValueError("Shard name must be a filename")
+    shard = args.data_dir / args.shard_name
     builder = tfds.builder_from_directory(str(args.data_dir))
     args.output_dir.mkdir(parents=True)
     cameras = ("image", "top_image")
