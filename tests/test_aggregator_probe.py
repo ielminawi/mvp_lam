@@ -6,7 +6,7 @@ from torch import nn
 
 from latent_action_model.genie.modules.temporal_pilot import WholeWindowLAM
 from latent_action_model.genie.modules.temporal_aggregator import AggregatedLAM
-from scripts.probe_temporal_aggregator import readouts, load_aggregator_state
+from scripts.probe_temporal_aggregator import readouts, load_aggregator_state, extraction_batch_size
 from scripts.temporal_pilot import RELEASE_HASH, frozen_hash
 
 
@@ -28,9 +28,19 @@ class AggregatorProbeTests(unittest.TestCase):
                 self.assertEqual(relative.item(),0.)
             model.aggregator.gate.fill_(.2)
             changed,relative=readouts(model,patches)
+            trained=model.encode_window(patches)
+            torch.testing.assert_close(changed['aggregated']['continuous'],trained['emb'].flatten(1),rtol=0,atol=0)
+            torch.testing.assert_close(changed['aggregated']['indices'],trained['indices'],rtol=0,atol=0)
             torch.testing.assert_close(changed['zero']['continuous'],outputs['zero']['continuous'],rtol=0,atol=0)
             self.assertGreater(relative.item(),0)
             self.assertFalse(torch.equal(changed['aggregated']['continuous'],changed['zero']['continuous']))
+
+    def test_extraction_uses_training_validation_batch_size(self):
+        reports={v:{'config':{'micro_batch_size':1}} for v in ('two_frame','four_frame')}
+        self.assertEqual(extraction_batch_size(4,reports),1)
+        reports['four_frame']['config']['micro_batch_size']=2
+        with self.assertRaises(ValueError):
+            extraction_batch_size(4,reports)
 
     def test_checkpoint_report_final_update_required(self):
         model=nn.Module(); model.backbone=nn.Linear(2,2); model.backbone.requires_grad_(False)

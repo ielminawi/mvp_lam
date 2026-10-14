@@ -16,6 +16,16 @@ from scripts.diagnose_temporal_intermediates import paired_interval
 VARIANTS = ('two_zero', 'two_aggregated', 'four_zero', 'four_aggregated')
 
 
+def extraction_batch_size(requested, reports):
+    sizes = {r['config']['micro_batch_size'] for r in reports.values()}
+    if len(sizes) != 1:
+        raise ValueError('Different validation batch sizes in training runs')
+    actual = sizes.pop()
+    if requested != actual:
+        print(f'Using batch size {actual} to reproduce training validation (requested {requested}).', flush=True)
+    return actual
+
+
 def readouts(model, patches):
     batch, times = patches.shape[:2]
     slots = model.backbone.action_latent.expand(batch, times, -1, -1)
@@ -69,10 +79,12 @@ def extract(args):
     reports={v:json.loads((d/'results.json').read_text()) for v,d in directories.items()}
     if reports['two_frame']['config'] != reports['four_frame']['config']:
         raise ValueError('Unmatched training configuration')
+    batch_size = extraction_batch_size(args.batch_size, reports)
     args.output_dir.mkdir(parents=True)
     manifest={'scope':'Frozen aggregator/zero-gate readout features, train/validation only; no LAM fitting/test access',
               'source_feature_manifest':original,'cache_manifest_sha256':cache_hash,'provenance':provenance(args),
-              'runs':reports,'checkpoint_sha256':{},'files':{},'correction':{}}
+              'runs':reports,'checkpoint_sha256':{},'files':{},'correction':{},
+              'extraction_batch_size':batch_size,'requested_batch_size':args.batch_size}
     for variant in directories:
         prefix='two' if variant=='two_frame' else 'four'
         checkpoint=directories[variant]/'latest.pt'
@@ -96,8 +108,8 @@ def extract(args):
             identity={k:np.concatenate(v) for k,v in identity.items()}; identities_match(identity,reference)
             collected={name:{k:[] for k in ('continuous','quantized','indices')} for name in ('zero','aggregated')}; relative=[]
             with torch.no_grad():
-                for first in range(0,len(dataset),args.batch_size):
-                    last=min(first+args.batch_size,len(dataset))
+                for first in range(0,len(dataset),batch_size):
+                    last=min(first+batch_size,len(dataset))
                     outputs,change=readouts(model,dataset.batch(range(first,last),variant))
                     for name,fields in outputs.items():
                         for key,value in fields.items():
@@ -108,7 +120,7 @@ def extract(args):
                         np.testing.assert_array_equal(outputs['zero']['indices'].cpu().numpy(),reference['indices'][first:last])
                         np.testing.assert_allclose(outputs['zero']['quantized'].cpu().numpy(),reference['features'][first:last],rtol=1e-5,atol=1e-5)
                     relative.append(change.cpu().numpy())
-                    if first % (args.batch_size*100)==0:
+                    if first % (batch_size*400)==0:
                         print(f'{variant}/{split}: {last}/{len(dataset)}',flush=True)
             for name,fields in collected.items():
                 values={k:np.concatenate(v) for k,v in fields.items()}
@@ -116,7 +128,8 @@ def extract(args):
                     counts=np.bincount(values['indices'].ravel(),minlength=16).tolist()
                     expected=reports[variant]['history'][-1 if name=='aggregated' else 0]['validation']['code_counts']
                     if counts != expected:
-                        raise ValueError('Training baseline/final code counts not reproduced')
+                        raise ValueError(f'{variant}/{name}: training code counts not reproduced at batch size {batch_size}. '
+                                         f'Expected {expected}; got {counts}. Check GPU/software provenance before interpretation.')
                 path=args.output_dir/f'{prefix}_{name}'/f'{split}.npz'
                 np.savez_compressed(path,**identity,**values)
                 manifest['files'][f'{prefix}_{name}/{split}.npz']=sha256(path)

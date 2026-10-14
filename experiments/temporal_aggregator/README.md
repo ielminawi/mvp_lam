@@ -97,6 +97,8 @@ python -m scripts.probe_temporal_aggregator fit \
 
 CPU fitting (same allocation works): full512D regularized affine ridge probes, noPCA/whitening, shared endpoint7 target normalization from previous training split. Sixalpha grid .01,.1,1,10,100,1000 selected by validationMSE, sum-SSE penalty with unpenalizedintercept. Report continuous and quantized all7/translation/orientation/gripper plus mean-action reference. Save feature hashes, modelweights, normalized predictions and results. Compare trainedminuszero within each inputlength, and fouraggregatedminustwoaggregated; positive paired differences mean worse. Episode-bootstrap intervals use equal-episode means, fixed globalvariance; not adjustedforvalidationselection orLAM-seeduncertainty. Zero four-frame is the released encoder with four inputs, not its originaltwoframe behavior. No nonlinear or path probes here; diagnostic startswith matched ridge. Validationreuse remainsexploratory.
 
+Extraction uses the recorded training-validation microbatch size (currently1), overriding a different requested batch size with an explicit message. This avoids batch-shape numerical differences near VQ nearest-code boundaries when verifying saved code counts. Requested/actual sizes are recorded. A mismatch that persists requires investigating GPU/software provenance; it is not silently tolerated.
+
 ```bash
 python -m unittest discover -s tests -p 'test_aggregator_probe.py'
 ```
