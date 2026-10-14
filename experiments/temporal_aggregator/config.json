@@ -1,0 +1,14 @@
+{
+  "seed": 42,
+  "horizon": 9,
+  "offsets": {"two_frame": [0, 9], "four_frame": [0, 3, 6, 9]},
+  "updates": 500,
+  "micro_batch_size": 1,
+  "accumulation_steps": 8,
+  "learning_rate": 0.0001,
+  "weight_decay": 0.0,
+  "commitment_beta": 0.25,
+  "gradient_clip": 1.0,
+  "validation_every": 100,
+  "precision": "float32"
+}
